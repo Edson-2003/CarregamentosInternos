@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 from enum import Enum
 import matplotlib.pyplot as plt
+from matplotlib.patches import Ellipse
 from collections import deque
 
 # Importando o Motor de Cálculo
@@ -199,7 +200,6 @@ class Aplicacao:
         frame_botoes = tk.Frame(self.frame_superior, bg="#2c3e50")
         frame_botoes.pack(side="left", padx=10, pady=10)
         
-        # Botão Adicionar
         self.menubutton_adicionar = tk.Menubutton(frame_botoes, text="Adicionar", bg="#27ae60", fg="white",
             font=("Arial", 10, "bold"), relief="raised", padx=20, pady=5, cursor="hand2")
         self.menubutton_adicionar.pack(side="left", padx=5)
@@ -209,7 +209,6 @@ class Aplicacao:
             self.menu_adicionar.add_command(label=opcao, command=lambda o=opcao: self.ao_adicionar_elemento(o))
         self.menubutton_adicionar.config(menu=self.menu_adicionar)
         
-        # Botão Editar (COM "EDITAR MOMENTO" INCLUÍDO)
         self.menubutton_editar = tk.Menubutton(frame_botoes, text="Editar", bg="#f39c12", fg="white",
             font=("Arial", 10, "bold"), relief="raised", padx=20, pady=5, cursor="hand2")
         self.menubutton_editar.pack(side="left", padx=5)
@@ -219,7 +218,6 @@ class Aplicacao:
             self.menu_editar.add_command(label=opcao, command=lambda o=opcao: self.ao_editar_elemento(o))
         self.menubutton_editar.config(menu=self.menu_editar)
         
-        # Botão Remover
         self.menubutton_remover = tk.Menubutton(frame_botoes, text="Remover", bg="#e74c3c", fg="white",
             font=("Arial", 10, "bold"), relief="raised", padx=20, pady=5, cursor="hand2")
         self.menubutton_remover.pack(side="left", padx=5)
@@ -232,24 +230,20 @@ class Aplicacao:
         separator = tk.Frame(self.frame_superior, bg="#7f8c8d", width=2, height=30)
         separator.pack(side="left", padx=10)
         
-        # Botão Desfazer
         self.botao_desfazer = tk.Button(self.frame_superior, text="↩ Desfazer", command=self.desfazer_acao,
             bg="#95a5a6", fg="white", font=("Arial", 9, "bold"), padx=10, pady=5, relief="flat", cursor="hand2",
             state="disabled")
         self.botao_desfazer.pack(side="left", padx=2)
         
-        # Botão Refazer
         self.botao_refazer = tk.Button(self.frame_superior, text="↪ Refazer", command=self.refazer_acao,
             bg="#95a5a6", fg="white", font=("Arial", 9, "bold"), padx=10, pady=5, relief="flat", cursor="hand2",
             state="disabled")
         self.botao_refazer.pack(side="left", padx=2)
         
-        # Botão Criar Viga
         self.botao_criar_viga = tk.Button(self.frame_superior, text="🔧 Criar Viga", command=self.abrir_criar_viga,
             bg="#9b59b6", fg="white", font=("Arial", 9, "bold"), padx=15, pady=5, relief="flat", cursor="hand2")
         self.botao_criar_viga.pack(side="left", padx=5)
         
-        # Botão Mostrar Diagramas
         self.botao_mostrar_diagramas = tk.Button(self.frame_superior, text="📊 Mostrar Diagramas", command=self.mostrar_diagramas,
             bg="#3498db", fg="white", font=("Arial", 9, "bold"), padx=15, pady=5, relief="flat", cursor="hand2")
         self.botao_mostrar_diagramas.pack(side="left", padx=5)
@@ -262,11 +256,12 @@ class Aplicacao:
         self.label_selecao.pack(side="right", padx=10, pady=10)
         
     def criar_frames_laterais(self):
-        # Frame Esquerdo Dividido (DCL + Tabela de Análise)
         self.frame_esquerdo = tk.Frame(self.container_principal, bg="white", bd=1, relief="solid", highlightthickness=0)
         self.frame_esquerdo.grid(row=0, column=0, sticky="nsew", padx=(10, 5), pady=10)
-        self.frame_esquerdo.grid_rowconfigure(0, weight=3) # DCL Ocupa mais espaço
-        self.frame_esquerdo.grid_rowconfigure(1, weight=1) # Análise
+        
+        # FIX DE LAYOUT: Divisão estática da tela esquerda (75% Gráfico, 25% Resultados Numéricos)
+        self.frame_esquerdo.grid_rowconfigure(0, weight=3)
+        self.frame_esquerdo.grid_rowconfigure(1, weight=1)
         self.frame_esquerdo.grid_columnconfigure(0, weight=1)
         
         self.frame_dcl = tk.Frame(self.frame_esquerdo, bg="white")
@@ -277,6 +272,7 @@ class Aplicacao:
         self.txt_resultados = tk.Text(self.frame_analise, height=6, bg="#f8f9fa", font=("Consolas", 10), state=tk.DISABLED)
         self.txt_resultados.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
+        # Frame Direito (Mantido Original)
         self.frame_direito = tk.Frame(self.container_principal, bg="#2c3e50", bd=0, relief="flat", highlightthickness=0)
         self.frame_direito.grid(row=0, column=1, sticky="nsew", padx=(5, 10), pady=10)
         
@@ -319,7 +315,7 @@ class Aplicacao:
         return fig, ax, canvas
     
     def criar_planos_cartesianos(self):
-        # Vinculando ao frame_dcl para caber a caixa de texto em baixo
+        # Usa o self.frame_dcl recém-criado para proteger o layout da tela
         self.fig_esquerdo, self.ax_esquerdo, self.canvas_esquerdo = self.criar_plano_cartesiano_branco(
             self.frame_dcl, "Diagrama de Corpo Livre")
         self.fig_direito_sup, self.ax_direito_sup, self.canvas_direito_sup = self.criar_plano_cartesiano_branco(
@@ -371,6 +367,7 @@ class Aplicacao:
         except Exception:
             return
 
+        # Diagrama de Esforço Cortante (DEC)
         self.ax_direito_sup.clear()
         self.ax_direito_sup.set_title("Esforço Cortante (V) [kN]", fontsize=10, fontweight='bold', pad=10, color='#2c3e50')
         self.ax_direito_sup.grid(True, alpha=0.3, linestyle='--')
@@ -386,6 +383,7 @@ class Aplicacao:
             self.ax_direito_sup.annotate(f"{engine.cortante[idx_min]:.2f}", (engine.x_vals[idx_min], engine.cortante[idx_min]), xytext=(0,-12), textcoords="offset points", ha='center', fontsize=8)
         self.canvas_direito_sup.draw()
 
+        # Diagrama de Momento Fletor (DMF) - Eixo Y Normal (Positivo para cima)
         self.ax_direito_inf.clear()
         self.ax_direito_inf.set_title("Momento Fletor (M) [kN.m]", fontsize=10, fontweight='bold', pad=10, color='#2c3e50')
         self.ax_direito_inf.grid(True, alpha=0.3, linestyle='--')
@@ -393,17 +391,15 @@ class Aplicacao:
         self.ax_direito_inf.plot(engine.x_vals, engine.momento, color='#2980b9', linewidth=2)
         self.ax_direito_inf.fill_between(engine.x_vals, engine.momento, 0, color='#2980b9', alpha=0.2)
         
-        if not self.ax_direito_inf.yaxis_inverted():
-            self.ax_direito_inf.invert_yaxis()
-            
         if len(engine.momento) > 0:
             idx_max, idx_min = np.argmax(engine.momento), np.argmin(engine.momento)
             self.ax_direito_inf.plot(engine.x_vals[idx_max], engine.momento[idx_max], 'ro', markersize=4)
             self.ax_direito_inf.plot(engine.x_vals[idx_min], engine.momento[idx_min], 'ro', markersize=4)
-            self.ax_direito_inf.annotate(f"{engine.momento[idx_max]:.2f}", (engine.x_vals[idx_max], engine.momento[idx_max]), xytext=(0,-12), textcoords="offset points", ha='center', fontsize=8)
-            self.ax_direito_inf.annotate(f"{engine.momento[idx_min]:.2f}", (engine.x_vals[idx_min], engine.momento[idx_min]), xytext=(0,5), textcoords="offset points", ha='center', fontsize=8)
+            self.ax_direito_inf.annotate(f"{engine.momento[idx_max]:.2f}", (engine.x_vals[idx_max], engine.momento[idx_max]), xytext=(0,5), textcoords="offset points", ha='center', fontsize=8)
+            self.ax_direito_inf.annotate(f"{engine.momento[idx_min]:.2f}", (engine.x_vals[idx_min], engine.momento[idx_min]), xytext=(0,-12), textcoords="offset points", ha='center', fontsize=8)
         self.canvas_direito_inf.draw()
 
+        # Preenche os Resultados
         res = "--- REAÇÕES DE APOIO ---\n"
         for k, v in engine.reacoes.items():
             unidade = "kN.m" if "M_" in k else "kN"
@@ -465,10 +461,10 @@ class Aplicacao:
                             novo_frame = self.criar_frame_editar_cargas()
                         elif key == "Editar Apoio":
                             novo_frame = self.criar_frame_editar_apoios()
-                        elif key == "Editar Comprimento":
-                            novo_frame = self.criar_frame_editar_comprimento()
                         elif key == "Editar Momento":
                             novo_frame = self.criar_frame_editar_momentos()
+                        elif key == "Editar Comprimento":
+                            novo_frame = self.criar_frame_editar_comprimento()
                         else:
                             continue
                     elif key.startswith("Remover"):
@@ -524,7 +520,9 @@ class Aplicacao:
         self.ax_esquerdo.set_ylim(-limite_y, limite_y)
         self.ax_esquerdo.axhline(y=0, color='black', linewidth=0.8, alpha=0.5)
         self.ax_esquerdo.axvline(x=0, color='black', linewidth=0.8, alpha=0.5)
-        self.ax_esquerdo.spines['left'].set_position('zero')
+        
+        # O eixo y foi posicionado na margem esquerda para não fatiar os desenhos na posição x=0
+        self.ax_esquerdo.spines['left'].set_position(('data', -margem))
         self.ax_esquerdo.spines['bottom'].set_position('zero')
         self.ax_esquerdo.spines['right'].set_color('none')
         self.ax_esquerdo.spines['top'].set_color('none')
@@ -567,36 +565,39 @@ class Aplicacao:
                 self.ax_esquerdo.text(apoio.posicao_x, -altura_engaste - limite_y * 0.08, 'Engaste', ha='center', fontsize=8, color='gray')
                 
             elif apoio.tipo == TipoApoio.PINO:
-                y_offset = -0.1 if apoio.posicao_vertical == PosicaoApoio.BASE else 0.1
-                altura_pino = limite_y * 0.1
-                largura_pino = self.viga.comprimento * 0.03
+                y_offset = -limite_y * 0.01 if apoio.posicao_vertical == PosicaoApoio.BASE else limite_y * 0.01
+                altura_pino = limite_y * 0.12
+                largura_pino = self.viga.comprimento * 0.02
                 y_base = y_offset - altura_pino if apoio.posicao_vertical == PosicaoApoio.BASE else y_offset + altura_pino
-                self.ax_esquerdo.plot([apoio.posicao_x, apoio.posicao_x - largura_pino, apoio.posicao_x + largura_pino],
-                        [y_offset, y_base, y_base], 'b-', linewidth=2)
+                
+                self.ax_esquerdo.plot([apoio.posicao_x, apoio.posicao_x - largura_pino, apoio.posicao_x + largura_pino, apoio.posicao_x],
+                        [y_offset, y_base, y_base, y_offset], 'b-', linewidth=2)
                 self.ax_esquerdo.fill([apoio.posicao_x, apoio.posicao_x - largura_pino, apoio.posicao_x + largura_pino],
                         [y_offset, y_base, y_base], 'lightblue', alpha=0.5)
-                label_y = -limite_y * 0.15 if apoio.posicao_vertical == PosicaoApoio.BASE else limite_y * 0.15
-                self.ax_esquerdo.text(apoio.posicao_x, label_y, f'Pino\n({apoio.posicao_vertical.value})', ha='center', fontsize=7, color='blue')
+                
+                label_y = y_base - (limite_y * 0.06) if apoio.posicao_vertical == PosicaoApoio.BASE else y_base + (limite_y * 0.06)
+                self.ax_esquerdo.text(apoio.posicao_x, label_y, 'Pino', ha='center', fontsize=8, color='blue', fontweight='bold')
                 
             elif apoio.tipo == TipoApoio.ROLETE:
+                raio_x = self.viga.comprimento * 0.015
+                raio_y = limite_y * 0.06
+                
                 if apoio.posicao_vertical == PosicaoApoio.BASE:
-                    y_centro = -0.3
-                    y_base = -0.6
+                    y_centro = -raio_y - (limite_y * 0.01)
+                    y_base = y_centro - raio_y
                 else:
-                    y_centro = 0.3
-                    y_base = 0.6
-                raio = 0.15
-                circle = plt.Circle((apoio.posicao_x, y_centro), raio, color='green', fill=True, alpha=0.7, zorder=5)
-                self.ax_esquerdo.add_patch(circle)
-                largura_base = 0.3
+                    y_centro = raio_y + (limite_y * 0.01)
+                    y_base = y_centro + raio_y
+                
+                ellipse = Ellipse((apoio.posicao_x, y_centro), width=raio_x*2, height=raio_y*2, color='green', fill=True, alpha=0.7, zorder=5)
+                self.ax_esquerdo.add_patch(ellipse)
+                
+                largura_base = self.viga.comprimento * 0.03
                 self.ax_esquerdo.plot([apoio.posicao_x - largura_base, apoio.posicao_x + largura_base], 
                                      [y_base, y_base], 'g-', linewidth=2.5, solid_capstyle='round')
-                self.ax_esquerdo.plot([apoio.posicao_x - largura_base, apoio.posicao_x - largura_base], 
-                                     [y_centro - raio, y_base], 'g-', linewidth=1.5)
-                self.ax_esquerdo.plot([apoio.posicao_x + largura_base, apoio.posicao_x + largura_base], 
-                                     [y_centro - raio, y_base], 'g-', linewidth=1.5)
-                label_y = -0.9 if apoio.posicao_vertical == PosicaoApoio.BASE else 0.9
-                self.ax_esquerdo.text(apoio.posicao_x, label_y, f'Rolete\n({apoio.posicao_vertical.value})', ha='center', fontsize=7, color='green')
+                
+                label_y = y_base - (limite_y * 0.06) if apoio.posicao_vertical == PosicaoApoio.BASE else y_base + (limite_y * 0.06)
+                self.ax_esquerdo.text(apoio.posicao_x, label_y, 'Rolete', ha='center', fontsize=8, color='green', fontweight='bold')
         
         # Desenhar cargas concentradas
         for carga in self.viga.obter_elementos_por_tipo(CargaConcentrada):
@@ -641,30 +642,27 @@ class Aplicacao:
             self.ax_esquerdo.text(carga.posicao_final_x, y_fim_valor_final + offset_y_final, 
                     f'{carga.valor_final} kN/m', ha='center', fontsize=8, color='orange', fontweight='bold')
         
+        # Desenhar momentos
         for momento in self.viga.obter_elementos_por_tipo(Momento):
-            raio = 0.4
+            raio_x = self.viga.comprimento * 0.035
+            raio_y = limite_y * 0.12
             
             if momento.sentido == "Horário":
                 theta = np.linspace(np.pi/2, 5*np.pi/2 - np.pi/4, 50)
-                y_arco = raio * np.sin(theta)
-                x_arco = momento.posicao_x + raio * np.cos(theta)
-                
+                y_arco = raio_y * np.sin(theta)
+                x_arco = momento.posicao_x + raio_x * np.cos(theta)
                 x_ponta = x_arco[0]
                 y_ponta = y_arco[0]
-
-                dx = 0.15   
-                dy = -0.15  
-                
+                dx = raio_x * 0.15   
+                dy = -raio_y * 0.15  
             else: 
                 theta = np.linspace(np.pi/2, np.pi/2 - 2*np.pi + np.pi/4, 50)
-                y_arco = -raio * np.sin(theta)
-                x_arco = momento.posicao_x + raio * np.cos(theta)
-                
+                y_arco = -raio_y * np.sin(theta)
+                x_arco = momento.posicao_x + raio_x * np.cos(theta)
                 x_ponta = x_arco[-1]
                 y_ponta = y_arco[-1]
-
-                dx = -0.15  
-                dy = 0.15   
+                dx = -raio_x * 0.15  
+                dy = raio_y * 0.15   
             
             self.ax_esquerdo.plot(x_arco, y_arco, 'm-', linewidth=2.5, solid_capstyle='round')
             
@@ -675,7 +673,7 @@ class Aplicacao:
                               mutation_scale=20, shrinkA=0, shrinkB=0,
                               fc='magenta', ec='magenta'))
             
-            text_y = 0.8 if momento.sentido == "Horário" else -0.8
+            text_y = limite_y * 0.25 if momento.sentido == "Horário" else -limite_y * 0.25
             self.ax_esquerdo.text(momento.posicao_x, text_y, 
                     f'{momento.valor} kN·m',
                     ha='center', va='center', fontsize=9, color='magenta', fontweight='bold',
@@ -685,7 +683,6 @@ class Aplicacao:
         self.fig_esquerdo.tight_layout()
         self.canvas_esquerdo.draw()
 
-        # Recalcula e Desenha Dinamicamente ao alterar os diagramas
         self.calcular_e_desenhar_esforcos()
     
     def abrir_criar_viga(self):
@@ -1208,7 +1205,8 @@ class Aplicacao:
         tk.Button(frame_selecao, text="✏️ Editar Selecionado", command=abrir_edicao,
             bg="#f39c12", fg="white", font=("Arial", 10, "bold"), padx=15, pady=8, relief="flat", cursor="hand2").pack(pady=10)
         return frame
-
+    
+    # EDITAR MOMENTOS AQUI
     def criar_frame_editar_momentos(self):
         frame, conteudo = self.criar_frame_operacao("Editar Momentos", "#f39c12")
         momentos = self.viga.obter_elementos_por_tipo(Momento)
@@ -1507,9 +1505,7 @@ class Aplicacao:
             self.iniciar_animacao_frame_operacao(novo_frame)
     
     def mostrar_diagramas(self):
-        # Dispara o recálculo
         self.calcular_e_desenhar_esforcos()
-        
         if self.layout_modificado:
             self.label_info.config(text="Mostrando diagramas...")
             self.restaurar_layout_original()
