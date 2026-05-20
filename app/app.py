@@ -1280,10 +1280,105 @@ class Aplicacao:
             if not selecao:
                 messagebox.showwarning("Aviso", "Selecione um elemento para editar.")
                 return
+            
             item = tree.item(selecao[0])
             id_elemento = item['values'][0]
-            messagebox.showinfo("Em desenvolvimento", f"Edição de apoio ID:{id_elemento} será implementada em breve.")
-        
+            apoio_obj = next(a for a in apoios_lista if a.id == id_elemento)
+            
+            # Limpa o frame de seleção para desenhar os campos de edição
+            for widget in conteudo.winfo_children(): 
+                widget.pack_forget()
+            
+            frame_campos = tk.Frame(conteudo, bg="white")
+            frame_campos.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+            
+            tk.Label(frame_campos, text="Tipo de Apoio:", bg="white", font=("Arial", 10, "bold")).pack(pady=(10, 5))
+            tipo_var = tk.StringVar(value=apoio_obj.tipo.value)
+            tipo_menu = ttk.Combobox(frame_campos, textvariable=tipo_var, values=["Pino", "Rolete", "Engaste"],
+                state="readonly", font=("Arial", 10), width=28)
+            tipo_menu.pack(pady=5)
+            
+            tk.Label(frame_campos, text="Posição na viga (m):", bg="white", font=("Arial", 10)).pack(pady=(10, 5))
+            entry_posicao = tk.Entry(frame_campos, font=("Arial", 10), width=30)
+            entry_posicao.pack(pady=5)
+            entry_posicao.insert(0, str(apoio_obj.posicao_x))
+            
+            posicao_frame = tk.Frame(frame_campos, bg="white")
+            posicao_frame.pack(pady=10)
+            tk.Label(posicao_frame, text="Posição vertical:", bg="white", font=("Arial", 10)).pack(side=tk.LEFT, padx=5)
+            posicao_var = tk.StringVar(value=apoio_obj.posicao_vertical.value)
+            posicao_menu = ttk.Combobox(posicao_frame, textvariable=posicao_var, values=["Base", "Topo"],
+                state="readonly", font=("Arial", 10), width=10)
+            posicao_menu.pack(side=tk.LEFT, padx=5)
+            
+            tk.Label(frame_campos, text="Descrição (opcional):", bg="white", font=("Arial", 10)).pack(pady=(10, 5))
+            entry_descricao = tk.Entry(frame_campos, font=("Arial", 10), width=30)
+            entry_descricao.pack(pady=5)
+            entry_descricao.insert(0, apoio_obj.descricao)
+            
+            # Desativa a seleção vertical se for um Engaste
+            def atualizar_campos_apoio(*args):
+                if tipo_var.get() == "Engaste":
+                    posicao_menu.configure(state="disabled")
+                else:
+                    posicao_menu.configure(state="readonly")
+            
+            tipo_var.trace('w', atualizar_campos_apoio)
+            atualizar_campos_apoio()
+            
+            def salvar_alteracoes_apoio():
+                try:
+                    posicao = float(entry_posicao.get())
+                    tipo_str = tipo_var.get()
+                    descricao = entry_descricao.get() or f"Apoio {tipo_str}"
+                    
+                    # Validações estruturais do edital
+                    if posicao < 0 or posicao > self.viga.comprimento:
+                        messagebox.showerror("Erro", f"Posição deve estar entre 0 e {self.viga.comprimento} m")
+                        return
+                    if tipo_str == "Engaste" and posicao != 0 and posicao != self.viga.comprimento:
+                        messagebox.showerror("Erro", "Engaste só pode ser colocado nas extremidades da viga (x=0 ou x=final)")
+                        return
+                        
+                    if messagebox.askyesno("Confirmar", "Deseja salvar as alterações neste apoio?"):
+                        # Salva o estado atual no histórico antes de modificar (para o botão Desfazer funcionar)
+                        self.salvar_estado()
+                        
+                        tipo_map = {"Pino": TipoApoio.PINO, "Rolete": TipoApoio.ROLETE, "Engaste": TipoApoio.ENGASTE}
+                        pos_vert_map = {"Base": PosicaoApoio.BASE, "Topo": PosicaoApoio.TOPO}
+                        
+                        # Modifica o elemento no objeto Viga
+                        self.viga.editar_elemento(
+                            id_elemento, 
+                            posicao_x=posicao, 
+                            tipo=tipo_map[tipo_str], 
+                            posicao_vertical=pos_vert_map[posicao_var.get()], 
+                            descricao=descricao
+                        )
+                        
+                        # Atualiza os gráficos e retorna para a lista de apoios
+                        self.desenhar_diagrama_corpo_livre()
+                        messagebox.showinfo("Sucesso", "Apoio alterado com sucesso!")
+                        
+                        novo_frame = self.criar_frame_editar_apoios()
+                        self.frames_operacoes["Editar Apoio"] = novo_frame
+                        self.trocar_frame_operacao(novo_frame)
+                except ValueError:
+                    messagebox.showerror("Erro", "Por favor, insira valores numéricos válidos")
+            
+            def voltar_selecao():
+                novo_frame = self.criar_frame_editar_apoios()
+                self.frames_operacoes["Editar Apoio"] = novo_frame
+                self.trocar_frame_operacao(novo_frame)
+
+            frame_botoes_edicao = tk.Frame(frame_campos, bg="white")
+            frame_botoes_edicao.pack(pady=20)
+            
+            tk.Button(frame_botoes_edicao, text="💾 Salvar Alterações", command=salvar_alteracoes_apoio,
+                bg="#27ae60", fg="white", font=("Arial", 10, "bold"), padx=15, pady=8, relief="flat", cursor="hand2").pack(side=tk.LEFT, padx=5)
+            tk.Button(frame_botoes_edicao, text="↩ Voltar à Seleção", command=voltar_selecao,
+                bg="#95a5a6", fg="white", font=("Arial", 10, "bold"), padx=15, pady=8, relief="flat", cursor="hand2").pack(side=tk.LEFT, padx=5)
+
         tk.Button(frame_selecao, text="✏️ Editar Selecionado", command=abrir_edicao_apoio,
             bg="#f39c12", fg="white", font=("Arial", 10, "bold"), padx=15, pady=8, relief="flat", cursor="hand2").pack(pady=10)
         return frame
